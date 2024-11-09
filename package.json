@@ -4,12 +4,20 @@
   "private": true,
   "homepage": "https://malkamali.github.io/",
   "dependencies": {
+    "@tensorflow/tfjs": "^4.x.x",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "chart.js": "^4.x.x",
+    "framer-motion": "^11.11.11",
+    "lodash": "^4.17.21",
+    "mathjs": "^13.2.1",
     "react": "^18.3.1",
+    "react-chartjs-2": "^5.x.x",
     "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",
+    "react-p5": "^1.4.1",
+    "react-router-dom": "^6.28.0",
+    "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
