@@ -33,5 +33,5 @@ Welcome to my personal portfolio website, [malkamali.github.io](https://malkamal
 ## License
 This project is licensed under the MIT License.
 
-Acknowledgements
+## Acknowledgements
 Feel free to explore the website and reach out through the contact section for any inquiries or collaborations.
