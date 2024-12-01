@@ -18,7 +18,6 @@ Welcome to my personal portfolio website, [malkamali.github.io](https://malkamal
 - HTML5
 - CSS3
 - JavaScript
-- [Additional frameworks or libraries, e.g., React, Bootstrap]
 
 ## Setup Instructions
 
@@ -35,5 +34,4 @@ Welcome to my personal portfolio website, [malkamali.github.io](https://malkamal
 This project is licensed under the MIT License.
 
 Acknowledgements
-[Resources or individuals you'd like to thank]
 Feel free to explore the website and reach out through the contact section for any inquiries or collaborations.
