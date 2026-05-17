@@ -1,90 +1,105 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { startTransition } from 'react';
 import { evaluate } from 'mathjs';
 import PolynomialPlot from '../utils/PolynomialPlot';
 import NeuralNetworkVisualizer from '../utils/NeuralNetworkVisualizer';
-import trainModel, { resetModel } from '../utils/trainModel';
-import Navbar from '../components/Navbar';
 
 const NNapproximation = () => {
   const [layers, setLayers] = useState([
-    { nodes: 3, activation: 'relu' },
-    { nodes: 3, activation: 'relu' },
+    { nodes: 8, activation: 'relu' },
+    { nodes: 8, activation: 'relu' },
   ]);
   const [weights, setWeights] = useState([]);
-  const [rmseData, setRMSE] = useState([]); // Store RMSE values
+  const [rmseData, setRMSE] = useState(null);
   const [approxData, setApproxData] = useState([]);
   const [polynomialInput, setPolynomialInput] = useState('3*x^3 - 2*x + 1');
+  // polynomialExpr is the validated expression sent to the worker (functions can't cross worker boundary)
+  const [polynomialExpr, setPolynomialExpr] = useState('3*x^3 - 2*x + 1');
   const [polynomial, setPolynomial] = useState(() => (x) => 3 * x ** 3 - 2 * x + 1);
-  const [currentEpoch, setCurrentEpoch] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const trainingRef = useRef(false);
+
+  const workerRef = useRef(null);
+  const epochRef = useRef(0);
 
   const maxLayers = 4;
   const maxNodes = 10;
 
   const safePolynomial = useCallback((x) => polynomial(x), [polynomial]);
 
+  // Create the worker once on mount; tear it down on unmount
+  useEffect(() => {
+    const worker = new Worker(
+      new URL('../workers/trainWorker.js', import.meta.url)
+    );
+
+    worker.onmessage = ({ data }) => {
+      const { type, epoch, rmse, predData, weights: wts } = data;
+
+      if (type === 'progress') {
+        epochRef.current = epoch;
+        setRMSE({ epoch: epoch - 1, rmse });
+        if (predData) {
+          startTransition(() => {
+            setApproxData(predData);
+            if (wts) setWeights(wts);
+          });
+        }
+      } else if (type === 'paused') {
+        epochRef.current = data.epoch;
+        setIsRunning(false);
+        setIsPaused(true);
+      } else if (type === 'done') {
+        epochRef.current = data.epoch;
+        setIsRunning(false);
+      }
+    };
+
+    workerRef.current = worker;
+    return () => worker.terminate();
+  }, []);
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       try {
-        const parsedFunction = (x) => evaluate(polynomialInput, { x });
-        setPolynomial(() => parsedFunction);
-      } catch (error) {
+        evaluate(polynomialInput, { x: 0 }); // validate before accepting
+        setPolynomial(() => (x) => evaluate(polynomialInput, { x }));
+        setPolynomialExpr(polynomialInput);
+      } catch {
         alert('Invalid polynomial input.');
       }
     }
   };
 
-  const startTraining = async () => {
+  const startTraining = () => {
     if (!isRunning && !isPaused) {
-      trainingRef.current = true;
+      epochRef.current = 0;
       setIsRunning(true);
-      const lastEpoch = await trainModel(
-        polynomial,
-        setApproxData,
-        layers,
-        trainingRef,
-        currentEpoch,
-        500,
-        setCurrentEpoch,
-        setWeights,
-        setRMSE // Pass RMSE setter
-      );
-      setCurrentEpoch(lastEpoch);
-      setIsRunning(false);
+      workerRef.current.postMessage({
+        type: 'train',
+        payload: { layers, expression: polynomialExpr, startEpoch: 0, maxEpochs: 500 },
+      });
     } else if (isPaused) {
-      trainingRef.current = true;
       setIsRunning(true);
       setIsPaused(false);
-      const lastEpoch = await trainModel(
-        polynomial,
-        setApproxData,
-        layers,
-        trainingRef,
-        currentEpoch,
-        500,
-        setCurrentEpoch,
-        setWeights
-      );
-      setCurrentEpoch(lastEpoch);
-      setIsRunning(false);
+      workerRef.current.postMessage({
+        type: 'train',
+        payload: { layers, expression: polynomialExpr, startEpoch: epochRef.current, maxEpochs: 500 },
+      });
     } else {
-      trainingRef.current = false;
-      setIsRunning(false);
-      setIsPaused(true);
+      // Currently running → pause
+      workerRef.current.postMessage({ type: 'stop' });
     }
   };
 
   const restartTraining = () => {
-    resetModel();
-    trainingRef.current = false;
+    workerRef.current.postMessage({ type: 'reset' });
     setIsRunning(false);
     setIsPaused(false);
     setApproxData([]);
-    setCurrentEpoch(0);
-    setWeights([]); // Reset weights
-    setRMSE([]); // Reset RMSE
+    setWeights([]);
+    setRMSE(null);
+    epochRef.current = 0;
   };
 
   const updateLayer = (index, key, value) => {
@@ -95,7 +110,7 @@ const NNapproximation = () => {
 
   const addLayer = () => {
     if (layers.length < maxLayers) {
-      setLayers([...layers, { nodes: 3, activation: 'relu' }]);
+      setLayers([...layers, { nodes: 8, activation: 'relu' }]);
     }
   };
 
@@ -107,7 +122,6 @@ const NNapproximation = () => {
 
   return (
     <div>
-      <Navbar />
       <div
         style={{
           marginTop: '80px',
@@ -120,8 +134,10 @@ const NNapproximation = () => {
         }}
       >
         {/* Plot Area */}
-        <div style={{ flex: 1, minWidth: '400px' }}>
-          <h1>Neural Network Approximation</h1>
+        <div style={{ flex: 1, minWidth: '280px', width: '100%' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1f2937', marginBottom: '12px' }}>
+            NN Approximation
+          </h1>
           <PolynomialPlot polynomial={safePolynomial} approxData={approxData} />
         </div>
 
@@ -153,7 +169,7 @@ const NNapproximation = () => {
                 borderRadius: '5px',
                 width: '100%',
               }}
-              disabled={layers.length === 1 || isRunning || isPaused} // Disable if only one layer or during training
+              disabled={isRunning || isPaused}
             />
           </label>
 
@@ -271,17 +287,19 @@ const NNapproximation = () => {
               textAlign: 'center',
             }}
           >
-            {rmseData.length > 0
-              ? `Epoch ${rmseData[rmseData.length - 1].epoch}: RMSE = ${rmseData[rmseData.length - 1].rmse.toFixed(4)}`
+            {rmseData
+              ? `Epoch ${rmseData.epoch}: RMSE = ${rmseData.rmse.toFixed(4)}`
               : 'No data available'}
           </div>
         </div>
       </div>
 
       {/* Network Display */}
-      <div style={{ marginTop: '40px' }}>
-        <h2>Neural Network Visualization</h2>
-        <NeuralNetworkVisualizer layers={layers} weights={weights} />
+      <div style={{ marginTop: '40px', textAlign: 'center' }}>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: '700', color: '#1f2937', marginBottom: '20px' }}>
+          NN Visualization
+        </h2>
+        <NeuralNetworkVisualizer layers={layers} weights={weights} isTraining={isRunning} />
       </div>
     </div>
   );

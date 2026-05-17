@@ -1,22 +1,21 @@
 import React, { useLayoutEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const NeuralNetworkVisualizer = ({ layers, weights }) => {
+function debounce(func, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => func(...args), delay);
+  };
+}
+
+const NeuralNetworkVisualizer = ({ layers, weights, isTraining }) => {
   const containerRef = useRef(null);
   const [nodePositions, setNodePositions] = useState([]);
-  const maxNodesForLines = 15; // Threshold for total nodes to show lines and weights
-
-  const debounce = (func, delay) => {
-    let timer;
-    return (...args) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => func(...args), delay);
-    };
-  };
+  const maxNodesForLines = 15;
 
   const updatePositions = useCallback(() => {
     if (!containerRef.current) return;
-
     const positions = Array.from(containerRef.current.children).map((layer) =>
       Array.from(layer.children)
         .filter((child) => child.classList.contains('node'))
@@ -29,27 +28,24 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
           };
         })
     );
-
     setNodePositions(positions);
   }, []);
 
-  const updatePositionsDebounced = useCallback(debounce(updatePositions, 100), [updatePositions]);
-
   useLayoutEffect(() => {
     updatePositions();
-    window.addEventListener('resize', updatePositionsDebounced);
-    return () => window.removeEventListener('resize', updatePositionsDebounced);
-  }, [updatePositionsDebounced, layers]);
+    const debouncedHandler = debounce(updatePositions, 100);
+    window.addEventListener('resize', debouncedHandler);
+    return () => window.removeEventListener('resize', debouncedHandler);
+  }, [updatePositions, layers]);
 
   const extendedLayers = [
-    { nodes: 1, activation: 'input' }, // Input layer
+    { nodes: 1, activation: 'input' },
     ...layers,
-    { nodes: 1, activation: 'output' }, // Output layer
+    { nodes: 1, activation: 'output' },
   ];
 
-  const totalNodes = extendedLayers.reduce((sum, layer) => sum + layer.nodes, 0);
+  const totalNodes = extendedLayers.reduce((sum, l) => sum + l.nodes, 0);
   const shouldDrawLines = totalNodes <= maxNodesForLines;
-
   const layerLabels = generateLayerLabels(extendedLayers);
 
   return (
@@ -70,7 +66,9 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
       {extendedLayers.map((layer, layerIndex) => (
         <motion.div
           key={layerIndex}
-          layout
+          // Disable layout tracking during training — prevents getBoundingClientRect
+          // reflows on every weight update while nodes aren't actually moving
+          layout={!isTraining}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0 }}
@@ -82,7 +80,7 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
             position: 'relative',
             gap: '20px',
           }}
-          onLayoutAnimationComplete={updatePositions}
+          onLayoutAnimationComplete={!isTraining ? updatePositions : undefined}
         >
           <h4 style={{ fontSize: '1rem' }}>{layerLabels[layerIndex]}</h4>
           <AnimatePresence onExitComplete={updatePositions}>
@@ -90,7 +88,7 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
               <motion.div
                 key={nodeIndex}
                 className="node"
-                layout
+                layout={!isTraining}
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
@@ -111,7 +109,6 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
         </motion.div>
       ))}
 
-      {/* Render connections only if total nodes <= maxNodesForLines */}
       {shouldDrawLines && (
         <svg
           style={{
@@ -127,7 +124,6 @@ const NeuralNetworkVisualizer = ({ layers, weights }) => {
               layer.map((startNode, startIndex) =>
                 nodePositions[layerIndex + 1]?.map((endNode, endIndex) => {
                   const weight = weights[layerIndex]?.[startIndex]?.[endIndex] ?? 0;
-
                   return (
                     <React.Fragment key={`line-${layerIndex}-${startIndex}-${endIndex}`}>
                       <motion.line
@@ -169,15 +165,14 @@ const generateLayerLabels = (layers) => {
     if (index === 0) return 'x';
     if (index === layers.length - 1) return 'y';
     const { activation } = layer;
-    if (!activationCounts[activation]) {
-      activationCounts[activation] = 1;
-    } else {
-      activationCounts[activation] += 1;
-    }
+    activationCounts[activation] = (activationCounts[activation] || 0) + 1;
     return `${capitalize(activation)} ${activationCounts[activation]}`;
   });
 };
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default NeuralNetworkVisualizer;
+// Only re-render when layers, weights, or training state actually changes.
+// This prevents the 50 epoch-counter updates per training run from triggering
+// expensive framer-motion layout measurements.
+export default React.memo(NeuralNetworkVisualizer);

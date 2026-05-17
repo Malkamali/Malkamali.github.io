@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Sketch from "react-p5";
-import Navbar from "../components/Navbar"; // Use your shared Navbar component
 
 
-const radToDeg = (radians) => (radians * 180) / Math.PI;
 const degToRad = (degrees) => (degrees * Math.PI) / 180;
 
 const DoublePendulum = () => {
@@ -15,6 +13,7 @@ const DoublePendulum = () => {
   const [angle2, setAngle2] = useState(45); // Angle in degrees
   const [running, setRunning] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 600, height: 600 });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const g = 9.81; // Fixed gravity
 
@@ -31,6 +30,7 @@ const DoublePendulum = () => {
     const updateCanvasSize = () => {
       const size = Math.min(window.innerWidth * 0.9, 600);
       setCanvasSize({ width: size, height: size });
+      setIsMobile(window.innerWidth < 768);
     };
     updateCanvasSize();
     window.addEventListener("resize", updateCanvasSize);
@@ -142,11 +142,10 @@ const DoublePendulum = () => {
 
   return (
     <div>
-      <Navbar />
       <div
         style={{
           display: "flex",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          flexDirection: isMobile ? "column" : "row",
           justifyContent: "center",
           padding: "20px",
           marginTop: "60px",
@@ -156,8 +155,8 @@ const DoublePendulum = () => {
         <div
           className="controls"
           style={{
-            marginLeft: window.innerWidth < 768 ? "0" : "20px",
-            marginTop: window.innerWidth < 768 ? "20px" : "0",
+            marginLeft: isMobile ? "0" : "20px",
+            marginTop: isMobile ? "20px" : "0",
             padding: "10px",
             border: "1px solid #ccc",
             borderRadius: "8px",
@@ -166,7 +165,7 @@ const DoublePendulum = () => {
             flexDirection: "column",
             gap: "15px",
             alignItems: "flex-start",
-            width: "300px",
+            width: isMobile ? "100%" : "300px",
           }}
         >
           {[
