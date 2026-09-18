@@ -1,0 +1,92 @@
+.clustering-board {
+  --ink: #e9f6f0;
+  --muted: #b6ced0;
+  --accent: #a8ecd1;
+  --line: #42616a;
+  --soft: #234852;
+  color: var(--ink);
+  background: #123039;
+}
+.clustering-board .panel-heading {
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.cluster-view {
+  width: 100%;
+}
+.cluster-grid path {
+  stroke: #88b6b9;
+  stroke-opacity: 0.12;
+  fill: none;
+}
+.cluster-grid text,
+.cluster-axis {
+  font-size: 12px;
+  fill: #b6ced0;
+  font-family: var(--sans);
+}
+.cluster-point {
+  transition: fill 350ms ease;
+}
+.cluster-centroid {
+  transition: transform 250ms ease-out;
+}
+.cluster-centroid text {
+  font: 600 12px var(--sans);
+}
+.cluster-counts {
+  display: flex;
+  gap: 12px 22px;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+.cluster-counts li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.cluster-counts li > span:first-child {
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+}
+.clustering-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.clustering-actions > .button:first-child {
+  flex: 1;
+}
+.clustering-actions .text-button {
+  width: 100%;
+  text-align: left;
+}
+.clustering-empty {
+  min-height: 150px;
+  display: grid;
+  align-items: center;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .clustering-board {
+    padding: 16px 10px;
+  }
+  .clustering-board .panel-heading,
+  .clustering-board .chart-note,
+  .cluster-counts,
+  .clustering-board .stats {
+    margin-inline: 6px;
+  }
+  .cluster-counts {
+    gap: 10px 16px;
+  }
+}
