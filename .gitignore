@@ -21,3 +21,11 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Isolated performance harness
+/.benchmark-build/
+
+# Local agent configuration and review artifacts
+/.codex/
+/docs/
+/.github/workflows/ci.yml

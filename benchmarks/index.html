@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <title>NN benchmark harness</title>
+  </head>
+  <body>
+    <script type="module">
+      window.workers = {
+        original: () =>
+          new Worker(new URL("./original-worker.js", import.meta.url), {
+            type: "module",
+          }),
+        improved: () =>
+          new Worker(
+            new URL("../src/workers/trainWorker.js", import.meta.url),
+            { type: "module" },
+          ),
+      };
+    </script>
+  </body>
+</html>
